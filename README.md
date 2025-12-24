@@ -40,12 +40,16 @@ claude mcp add --scope user voicemode -- uvx --refresh voice-mode
 
 *VoiceMode is the voice engine that powers these hooks. You only need to install it once.*
 
-### Step 2: Install the Hooks (one-time, global)
+### Step 2: Install the Hooks Globally
 
-Copy the hooks to your global Claude configuration:
+Copy the hooks and settings to your global Claude configuration:
 
 ```bash
-cp -r .claude ~/.claude/
+# Copy the hooks folder
+cp -r .claude/hooks ~/.claude/
+
+# Merge settings.json into your global config
+cat .claude/settings.json >> ~/.claude/settings.json
 ```
 
 *This enables voice notifications for **all** your Claude Code projects automatically.*
@@ -70,7 +74,7 @@ These hooks use Claude Code's native hook system to listen for events and trigge
 | `task-summary.sh` | Task completes | Reads the task summary aloud |
 | `notification-idle.sh` | Idle for 60+ seconds | Reminds you that Claude is waiting |
 
-All hooks are configured in `.claude/settings.json` using the `Notification` event type.
+All hooks are configured in `~/.claude/settings.json` using the `Notification` and `Stop` event types.
 
 ---
 
@@ -98,7 +102,7 @@ Each script calls `voicemode converse` with custom messages. See [VoiceMode docs
 
 ## License
 
-MIT &mdash; feel free to use, modify, and distribute.
+MIT — feel free to use, modify, and distribute.
 
 ---
 
