@@ -84,7 +84,11 @@ All hooks are configured in `~/.claude/settings.json` using the `Notification` a
 
 ## Customization
 
-Want to change the voice, speed, or message format? Edit the hook scripts directly:
+### Changing the Voice
+
+**Per-script (quick method):**
+
+Edit the hook scripts directly to add a `voice` parameter:
 
 ```bash
 ~/.claude/hooks/permission-request.sh
@@ -92,7 +96,41 @@ Want to change the voice, speed, or message format? Edit the hook scripts direct
 ~/.claude/hooks/notification-idle.sh
 ```
 
-Each script calls `voicemode converse` with custom messages. See [VoiceMode docs](https://github.com/your-repo/voicemode) for available options.
+Each script calls `voicemode converse`. Add your preferred voice:
+
+```bash
+# Example: Use male voice
+converse "Your message here" voice="am_adam"
+```
+
+**Available voices:**
+- **Kokoro (local):** `af_sky`, `af_sarah`, `am_adam`, `am_michael`, `ef_dora`, `bm_george`, `bm_lewis`
+- **OpenAI (cloud):** `nova`, `shimmer`, `alloy`, `echo`, `fable`, `onyx`
+
+**Global default (recommended):**
+
+Set a default voice for all VoiceMode conversations by editing `~/.voicemode/voicemode.env`:
+
+```bash
+# Add or edit these lines:
+export VOICEMODE_VOICES="am_adam,alloy"           # Preferred voices (first available is used)
+export VOICEMODE_KOKORO_DEFAULT_VOICE="am_adam"   # Default for local Kokoro TTS
+```
+
+This affects all VoiceMode usage system-wide, not just hooks.
+
+**Other options:**
+- `speed="1.5"` - Adjust playback speed (0.25 to 4.0)
+- `tts_provider="kokoro"` - Force local vs OpenAI
+- `tts_provider="openai"` - Force cloud TTS
+
+See [VoiceMode parameter docs](https://voice-mode.readthedocs.io/en/latest/) for complete reference.
+
+---
+
+## Repository-Specific Configuration
+
+Want different voice settings for different projects? See [REPOSITORY-CONFIG.md](./REPOSITORY-CONFIG.md) for per-repository voice configuration.
 
 ---
 
