@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__voicemode__converse",
+      "Bash(git init:*)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ]
+  }
+}
