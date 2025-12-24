@@ -1,129 +1,81 @@
-# Agent Setup Guide: Claude Code Voice Notifications
+# Global Setup Guide: Claude Code Voice Notifications
 
-Step-by-step instructions for AI agents to set up voice notification hooks for Claude Code in any repository.
+Step-by-step instructions for AI agents to set up voice notification hooks **globally** for all Claude Code projects.
+
+> **Note:** This guide installs hooks globally in `~/.claude/`, so they work for every project automatically.
 
 ## Prerequisites
 
 Before starting, verify:
-- User is on macOS (`uname -s` returns "Darwin`)
-- Homebrew is installed (`command -v brew`)
+- User is on macOS or Linux
+- Python 3.10+ is installed (`python3 --version`)
 - Claude Code CLI is installed
 - User has permission to install system packages
 
 ## Overview
 
 You will:
-1. Install voicemode and dependencies
-2. Install and start Kokoro TTS service
-3. Copy hook scripts to the target project
-4. Configure `settings.json` to register hooks
-5. Run validation tests
-6. Instruct user to restart Claude Code
+1. Install VoiceMode MCP server
+2. Copy hook scripts to global Claude config (`~/.claude/hooks/`)
+3. Merge hooks configuration into global settings.json
+4. Run validation tests
+5. Instruct user to restart Claude Code
 
 ## Step-by-Step Instructions
 
 ### Step 1: Verify Prerequisites
 
 ```bash
-# Check macOS
-uname -s  # Should output "Darwin"
-
-# Check Homebrew
-command -v brew || echo "Homebrew not installed"
+# Check OS
+uname -s  # Should output "Darwin" (macOS) or "Linux"
 
 # Check Python (3.10+)
 python3 --version
 ```
 
-**If Homebrew is missing**, inform the user:
-> "You need Homebrew to install voicemode. Install it from https://brew.sh and run this setup again."
-
-### Step 2: Get Target Project Path
-
-Ask the user for their project path, or use current directory:
+### Step 2: Install VoiceMode
 
 ```bash
-# If no path provided, use current directory
-PROJECT_PATH="${1:-.}"
+# Install uv package manager (if not installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Verify it's a valid directory
-if [ ! -d "$PROJECT_PATH" ]; then
-    echo "Error: $PROJECT_PATH is not a valid directory"
-    exit 1
-fi
+# Install VoiceMode
+uvx voice-mode-install
 
-cd "$PROJECT_PATH"
-echo "Setting up voice hooks in: $(pwd)"
+# Register VoiceMode with Claude Code
+claude mcp add --scope user voicemode -- uvx --refresh voice-mode
 ```
 
-### Step 3: Install voicemode
-
+**Verify VoiceMode is installed:**
 ```bash
-# Check if already installed
-if command -v voicemode >/dev/null 2>&1; then
-    echo "✓ voicemode already installed"
-    voicemode --version
-else
-    echo "Installing voicemode..."
-    brew tap voicemode/voicemode
-    brew install voicemode
-
-    # Verify installation
-    if voicemode --version >/dev/null 2>&1; then
-        echo "✓ voicemode installed successfully"
-    else
-        echo "✗ voicemode installation failed"
-        exit 1
-    fi
-fi
+claude mcp list | grep voicemode
 ```
 
-### Step 4: Start Kokoro TTS Service
+### Step 3: Test VoiceMode
 
 ```bash
-# Check if service is running
-if voicemode service status kokoro 2>/dev/null | grep -qi "running\|active"; then
-    echo "✓ Kokoro TTS service already running"
-else
-    echo "Starting Kokoro TTS service..."
-    voicemode service start kokoro
-
-    # Wait a moment for service to start
-    sleep 2
-
-    # Verify it's running
-    if voicemode service status kokoro 2>/dev/null | grep -qi "running\|active"; then
-        echo "✓ Kokoro TTS service started"
-    else
-        echo "⚠ Kokoro service may not have started properly"
-        echo "  You can start it manually with: voicemode service start kokoro"
-    fi
-fi
-```
-
-**Optional - Test TTS**:
-```bash
-echo "Testing voice output..."
+# Test voice output
 voicemode converse -m "Voice notifications are ready" --no-wait
 ```
 
-### Step 5: Create Hooks Directory Structure
+If you don't hear anything, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
+
+### Step 4: Create Global Hooks Directory
 
 ```bash
-# Create .claude/hooks directory
-mkdir -p .claude/hooks
-cd .claude/hooks
-echo "Created: $(pwd)"
+# Create global hooks directory
+mkdir -p ~/.claude/hooks
+echo "Created: ~/.claude/hooks"
 ```
 
-### Step 6: Create Hook Scripts
+### Step 5: Create Hook Scripts
 
-Create each script with the exact content below.
+Create each script in `~/.claude/hooks/` with the exact content below.
 
-#### 6.1: task-summary.sh
+#### 5.1: task-summary.sh
 
 ```bash
-cat > task-summary.sh << 'EOF'
+cat > ~/.claude/hooks/task-summary.sh << 'EOF'
 #!/bin/bash
 # Claude Code Stop Hook: Announce completed tasks summary
 # Reads the most recent todo file and generates a ~10 word summary
@@ -174,10 +126,10 @@ voicemode converse -m "$MESSAGE" --no-wait
 EOF
 ```
 
-#### 6.2: notification-idle.sh
+#### 5.2: notification-idle.sh
 
 ```bash
-cat > notification-idle.sh << 'EOF'
+cat > ~/.claude/hooks/notification-idle.sh << 'EOF'
 #!/bin/bash
 # Claude Code Hook: Notify when waiting for user input (idle)
 # Triggered by Notification event with idle_prompt matcher after 60+ seconds
@@ -187,10 +139,10 @@ voicemode converse -m "Claude is waiting for your input" --no-wait
 EOF
 ```
 
-#### 6.3: permission-request.sh
+#### 5.3: permission-request.sh
 
 ```bash
-cat > permission-request.sh << 'EOF'
+cat > ~/.claude/hooks/permission-request.sh << 'EOF'
 #!/bin/bash
 # Claude Code Hook: Notify when waiting for permission
 # Triggered by PermissionRequest event when a permission dialog is shown
@@ -198,81 +150,45 @@ cat > permission-request.sh << 'EOF'
 # Get tool info from stdin
 INPUT=$(cat)
 
-# Extract the tool name
+# Extract the tool name and description
 TOOL=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('tool','unknown'))" 2>/dev/null)
+DESC=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('description',''))" 2>/dev/null)
+
+# Build message with description if available
+if [ -n "$DESC" ]; then
+    # Remove "Bash" prefix from description if present
+    CLEAN_DESC=$(echo "$DESC" | sed 's/^Bash command //;s/^Bash //')
+    MESSAGE="Claude is waiting to $CLEAN_DESC"
+else
+    MESSAGE="Claude is waiting to use $TOOL"
+fi
 
 # Announce permission request via voicemode
-voicemode converse -m "Claude needs permission to use $TOOL" --no-wait
+voicemode converse -m "$MESSAGE" --no-wait
 EOF
 ```
 
-#### 6.4: Make Scripts Executable
+#### 5.4: Make Scripts Executable
 
 ```bash
-chmod +x task-summary.sh notification-idle.sh permission-request.sh
+chmod +x ~/.claude/hooks/*.sh
 echo "✓ Hook scripts created and made executable"
 ```
 
-### Step 7: Handle settings.json
+### Step 6: Create Global settings.json
 
-**IMPORTANT**: Check if settings.json already exists.
+**Check if settings.json already exists:**
 
 ```bash
-cd ..  # Go back to .claude directory
-
-if [ -f settings.json ]; then
-    echo "⚠ Existing settings.json found"
+if [ -f ~/.claude/settings.json ]; then
+    echo "⚠ Existing ~/.claude/settings.json found"
     echo ""
-    echo "You need to merge the hooks configuration. The hooks to add are:"
-    echo ""
-    echo "1. Stop hook -> task-summary.sh"
-    echo "2. Notification hook (idle_prompt) -> notification-idle.sh"
-    echo "3. Notification hook (permission_prompt) -> permission-request.sh"
-    echo ""
-    echo "Add this to your settings.json:"
-    echo ""
-    cat << 'JSONEX'
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-summary.sh"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "idle_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notification-idle.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "permission_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-request.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-JSONEX
-    echo ""
-    echo "After merging, run: ./.claude/hooks/test-hooks.sh"
+    echo "Merging hooks configuration..."
+    cat .claude/settings.json >> ~/.claude/settings.json
+    echo "✓ Hooks merged into ~/.claude/settings.json"
 else
-    # No existing settings.json - create new one
-    echo "Creating settings.json..."
-    cat > settings.json << 'EOF'
+    echo "Creating ~/.claude/settings.json..."
+    cat > ~/.claude/settings.json << 'EOF'
 {
   "hooks": {
     "Stop": [
@@ -280,7 +196,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-summary.sh"
+            "command": "~/.claude/hooks/task-summary.sh"
           }
         ]
       }
@@ -291,7 +207,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notification-idle.sh"
+            "command": "~/.claude/hooks/notification-idle.sh"
           }
         ]
       },
@@ -300,7 +216,7 @@ else
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-request.sh"
+            "command": "~/.claude/hooks/permission-request.sh"
           }
         ]
       }
@@ -308,32 +224,26 @@ else
   }
 }
 EOF
-    echo "✓ settings.json created"
+    echo "✓ ~/.claude/settings.json created"
 fi
 ```
 
-### Step 8: Run Validation Tests
+### Step 7: Run Validation Tests
 
 ```bash
-cd hooks  # Back to hooks directory
-
-# Create test script if it doesn't exist
-if [ ! -f test-hooks.sh ]; then
-    cat > test-hooks.sh << 'TESTEOF'
+# Create test script
+cat > ~/.claude/hooks/test-hooks.sh << 'TESTEOF'
 #!/bin/bash
 # Quick validation test for Claude Code voice notification hooks
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-HOOKS_DIR="$PROJECT_DIR/.claude/hooks"
+HOOKS_DIR="$HOME/.claude/hooks"
 
 echo "🔧 Claude Code Hooks Validation"
 echo "================================"
-echo "Project: $PROJECT_DIR"
 echo ""
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[0;33m'
 NC='\033[0m'
 
 PASSED=0
@@ -352,13 +262,13 @@ for script in task-summary.sh notification-idle.sh permission-request.sh; do
 done
 
 # Test 2: Settings.json
-if [ -f "$PROJECT_DIR/.claude/settings.json" ]; then
-    if jq -e '.hooks.Stop' "$PROJECT_DIR/.claude/settings.json" >/dev/null 2>&1; then
+if [ -f "$HOME/.claude/settings.json" ]; then
+    if jq -e '.hooks.Stop' "$HOME/.claude/settings.json" >/dev/null 2>&1; then
         pass "Stop hook registered"
     else
         fail "Stop hook not registered"
     fi
-    if jq -e '.hooks.Notification[] | select(.matcher == "idle_prompt")' "$PROJECT_DIR/.claude/settings.json" >/dev/null 2>&1; then
+    if jq -e '.hooks.Notification[] | select(.matcher == "idle_prompt")' "$HOME/.claude/settings.json" >/dev/null 2>&1; then
         pass "Idle hook registered"
     else
         fail "Idle hook not registered"
@@ -385,43 +295,38 @@ else
 fi
 TESTEOF
 
-    chmod +x test-hooks.sh
-fi
+chmod +x ~/.claude/hooks/test-hooks.sh
 
 # Run the test
-./test-hooks.sh
+~/.claude/hooks/test-hooks.sh
 ```
 
-### Step 9: Final User Instructions
+### Step 8: Final User Instructions
 
-```bash
-cd ../..  # Return to project root
-```
-
-**Inform the user**:
+**Inform the user:**
 
 ```
-✅ Voice notification hooks installed!
-
-Project: $PROJECT_PATH
+✅ Voice notification hooks installed globally!
 
 Files created:
-- .claude/hooks/task-summary.sh
-- .claude/hooks/notification-idle.sh
-- .claude/hooks/permission-request.sh
-- .claude/hooks/test-hooks.sh
-- .claude/settings.json (or merged)
+- ~/.claude/hooks/task-summary.sh
+- ~/.claude/hooks/notification-idle.sh
+- ~/.claude/hooks/permission-request.sh
+- ~/.claude/hooks/test-hooks.sh
+- ~/.claude/settings.json (or merged)
+
+What you'll hear:
+• "Done: [task summary]" when tasks complete
+• "Claude is waiting for your input" after 60 seconds idle
+• "Claude is waiting to [action]" when permission is needed
 
 Next steps:
-1. Restart Claude Code completely
-2. You'll hear voice announcements for:
-   • Completed tasks
-   • Idle state (after 60 seconds)
-   • Permission requests
+1. Restart Claude Code completely (quit and reopen)
+2. The hooks will now work for ALL projects automatically
 
-To verify: ./.claude/hooks/test-hooks.sh
+To verify: ~/.claude/hooks/test-hooks.sh
 
-To customize messages, edit the scripts in .claude/hooks/
+To customize messages, edit the scripts in ~/.claude/hooks/
 ```
 
 ## Troubleshooting
@@ -429,17 +334,17 @@ To customize messages, edit the scripts in .claude/hooks/
 See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for:
 - Hooks not triggering
 - No voice output
-- Kokoro service issues
+- VoiceMode installation issues
 - settings.json conflicts
 
 ## Agent Checklist
 
-- [ ] Verified macOS and Homebrew
-- [ ] Installed voicemode (or confirmed existing)
-- [ ] Started Kokoro TTS service
-- [ ] Created .claude/hooks/ directory
+- [ ] Verified OS and Python
+- [ ] Installed VoiceMode and registered with Claude Code
+- [ ] Tested VoiceMode voice output
+- [ ] Created ~/.claude/hooks/ directory
 - [ ] Created all three hook scripts
 - [ ] Made scripts executable
-- [ ] Created or merged settings.json
+- [ ] Created or merged ~/.claude/settings.json
 - [ ] Validated installation with test script
 - [ ] Provided restart instructions to user

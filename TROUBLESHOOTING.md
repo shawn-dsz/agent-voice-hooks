@@ -16,26 +16,26 @@ Common issues and solutions for Claude Code voice notification hooks.
 
 3. **Hook scripts aren't executable**
    ```bash
-   chmod +x .claude/hooks/*.sh
+   chmod +x ~/.claude/hooks/*.sh
    ```
 
 4. **Wrong command path in settings.json**
-   - Verify path uses `$CLAUDE_PROJECT_DIR` environment variable
-   - Verify path is correct for your project structure
+   - Verify path uses `~/.claude/hooks/` for global installation
+   - Verify path is correct for your setup
 
 ## No Voice Output
 
 ### Problem: Hooks run but no voice is heard
 
-**Check Kokoro Service:**
+**Check VoiceMode MCP:**
 
 ```bash
-voicemode service status kokoro
+claude mcp list
 ```
 
-If not running:
+Verify voicemode is registered. If not:
 ```bash
-voicemode service start kokoro
+claude mcp add --scope user voicemode -- uvx --refresh voice-mode
 ```
 
 **Verify voicemode works directly:**
@@ -49,57 +49,41 @@ voicemode converse -m "Test message" --no-wait
 - Correct output device selected in System Settings
 - No other app blocking audio
 
-## Kokoro Service Won't Start
+## VoiceMode Not Installed
 
-### Problem: Kokoro TTS service fails to start
+### Problem: voicemode command not found
 
-**Check port availability:**
+**Install VoiceMode:**
+
 ```bash
-lsof -i :8880  # Kokoro default port
-```
-
-If port is in use, either:
-- Kill the process using port 8880
-- Or configure Kokoro to use a different port
-
-**Check service logs:**
-```bash
-voicemode service logs kokoro
-```
-
-**Reinstall Kokoro:**
-```bash
-brew reinstall voicemode
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uvx voice-mode-install
+claude mcp add --scope user voicemode -- uvx --refresh voice-mode
 ```
 
 ## settings.json Conflicts
 
-### Problem: Existing settings.json needs hooks merged
+### Problem: Existing global settings.json needs hooks merged
 
-If your project already has a `settings.json`, you need to merge the hooks configuration.
+If you already have a `~/.claude/settings.json`, you need to merge the hooks configuration.
 
-**Current settings.json example:**
-```json
-{
-  "permissions": {
-    "allow": ["*"]
-  }
-}
+**Quick merge with cat:**
+```bash
+cat .claude/settings.json >> ~/.claude/settings.json
 ```
 
-**After merging hooks:**
+**Or merge manually** — add the `hooks` section to your existing config:
+
 ```json
 {
-  "permissions": {
-    "allow": ["*"]
-  },
+  "yourExisting": "settings",
   "hooks": {
     "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-summary.sh"
+            "command": "~/.claude/hooks/task-summary.sh"
           }
         ]
       }
@@ -110,7 +94,7 @@ If your project already has a `settings.json`, you need to merge the hooks confi
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notification-idle.sh"
+            "command": "~/.claude/hooks/notification-idle.sh"
           }
         ]
       },
@@ -119,27 +103,13 @@ If your project already has a `settings.json`, you need to merge the hooks confi
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-request.sh"
+            "command": "~/.claude/hooks/permission-request.sh"
           }
         ]
       }
     ]
   }
 }
-```
-
-**Quick merge with jq:**
-```bash
-jq '. + {
-  "hooks": {
-    "Stop": [{ "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-summary.sh" }] }],
-    "Notification": [
-      { "matcher": "idle_prompt", "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notification-idle.sh" }] },
-      { "matcher": "permission_prompt", "hooks": [{ "type": "command", "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/permission-request.sh" }] }
-    ]
-  }
-}' .claude/settings.json > .claude/settings.json.new
-mv .claude/settings.json.new .claude/settings.json
 ```
 
 ## Hooks Only Work Sometimes
@@ -154,7 +124,7 @@ mv .claude/settings.json.new .claude/settings.json
 ```json
 {
   "type": "command",
-  "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/task-summary.sh",
+  "command": "~/.claude/hooks/task-summary.sh",
   "timeout": 120
 }
 ```
@@ -163,15 +133,9 @@ mv .claude/settings.json.new .claude/settings.json
 
 ### Problem: Voice sounds distorted or cuts off
 
-**Check Kokoro service health:**
+**Test voicemode directly:**
 ```bash
-voicemode service status kokoro
-voicemode service logs kokoro | tail -20
-```
-
-**Restart Kokoro service:**
-```bash
-voicemode service restart kokoro
+voicemode converse -m "Test" --no-wait
 ```
 
 **Adjust voice settings** (if needed):
@@ -190,7 +154,7 @@ voicemode converse -m "Test" --voice am_michael --no-wait
 
 To verify it's configured:
 ```bash
-jq '.hooks.Notification[] | select(.matcher == "idle_prompt")' .claude/settings.json
+jq '.hooks.Notification[] | select(.matcher == "idle_prompt")' ~/.claude/settings.json
 ```
 
 Should return:
@@ -203,13 +167,13 @@ Should return:
 
 ## Permission Hook Shows Wrong Tool Name
 
-### Problem: Hears "Claude needs permission to use unknown"
+### Problem: Hears "Claude is waiting to use unknown"
 
 This means the JSON parsing in `permission-request.sh` failed.
 
 **Debug:**
 ```bash
-echo '{"tool":"Write","file_path":"test.txt"}' | ./.claude/hooks/permission-request.sh
+echo '{"tool":"Write","description":"Write to file"}' | ~/.claude/hooks/permission-request.sh
 ```
 
 **Common fix:** Ensure Python 3 is installed:
@@ -223,7 +187,7 @@ If none of these solutions work:
 
 1. **Run the test script:**
    ```bash
-   ./.claude/hooks/test-hooks.sh
+   ~/.claude/hooks/test-hooks.sh
    ```
 
 2. **Check Claude Code logs:**
@@ -234,35 +198,26 @@ If none of these solutions work:
 3. **Check hook execution:**
    ```bash
    # Run hooks directly with verbose output
-   bash -x ./.claude/hooks/task-summary.sh
+   bash -x ~/.claude/hooks/task-summary.sh
    ```
 
 4. **File an issue:**
-   - For voicemode issues: https://github.com/voicemode/voicemode/issues
+   - For this repo: https://github.com/shawn-dsz/agent-voice-hooks/issues
+   - For VoiceMode issues: https://github.com/voice-mode/voice-mode/issues
    - For Claude Code issues: https://github.com/anthropics/claude-code/issues
 
 ## Useful Commands
 
 ```bash
-# Check all voicemode services
-voicemode service status kokoro
-voicemode service status whisper
-
-# View service logs
-voicemode service logs kokoro --lines 50
-
-# Restart services
-voicemode service restart kokoro
-
 # Test TTS directly
 voicemode converse -m "Test message" --no-wait
 
 # Validate settings.json
-jq . .claude/settings.json
+jq . ~/.claude/settings.json
 
 # Check hook script permissions
-ls -la .claude/hooks/
+ls -la ~/.claude/hooks/
 
-# Test hook manually
-echo '{"tool":"Write"}' | ./.claude/hooks/permission-request.sh
+# Test permission hook manually
+echo '{"tool":"Write","description":"Write to file"}' | ~/.claude/hooks/permission-request.sh
 ```
