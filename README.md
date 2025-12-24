@@ -1,5 +1,9 @@
 # Claude Voice Notification Hooks
 
+<div align="center">
+  <img src="logo.png" width="300" alt="Claude Voice Notification Hooks Logo">
+</div>
+
 > **Turn Claude into a vocal collaborator** — get real-time voice announcements when tasks complete, permissions are needed, or your agent is waiting for you.
 
 ---
