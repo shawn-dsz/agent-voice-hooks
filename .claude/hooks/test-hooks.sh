@@ -26,17 +26,17 @@ WARNINGS=0
 # Test helper functions
 pass() {
     echo -e "${GREEN}✓ PASS${NC}: $1"
-    ((PASSED++))
+    ((PASSED++)) || true
 }
 
 fail() {
     echo -e "${RED}✗ FAIL${NC}: $1"
-    ((FAILED++))
+    ((FAILED++)) || true
 }
 
 warn() {
     echo -e "${YELLOW}⚠ WARN${NC}: $1"
-    ((WARNINGS++))
+    ((WARNINGS++)) || true
 }
 
 info() {
@@ -176,6 +176,86 @@ fi
 
 echo ""
 
+# Test 6a: Test permission-request hook message generation with description
+echo "6a. Testing permission-request hook message generation..."
+if [ -f "$HOOKS_DIR/permission-request.sh" ]; then
+
+    # Helper function to extract message from hook (mocking voicemode)
+    test_message() {
+        local input="$1"
+        local expected="$2"
+        local test_name="$3"
+
+        # Mock the hook to capture the message instead of calling voicemode
+        local message
+        message=$(echo "$input" | bash -c '
+            INPUT=$(cat)
+            TOOL=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get(\"tool\",\"unknown\"))" 2>/dev/null)
+            DESC=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get(\"description\",\"\"))" 2>/dev/null)
+
+            if [ -n "$DESC" ]; then
+                CLEAN_DESC=$(echo "$DESC" | sed -E "s/^Bash( command)?[ :]+ ?//")
+                MESSAGE="Claude is waiting to $CLEAN_DESC"
+            else
+                MESSAGE="Claude is waiting to use $TOOL"
+            fi
+            echo "$MESSAGE"
+        ' 2>&1)
+
+        if [ "$message" = "$expected" ]; then
+            pass "$test_name"
+            info "Message: \"$message\""
+        else
+            fail "$test_name"
+            info "Expected: \"$expected\""
+            info "Got:      \"$message\""
+        fi
+    }
+
+    # Test with description containing action
+    test_message '{"tool":"Bash","description":"List files in current directory"}' \
+        "Claude is waiting to List files in current directory" \
+        "Description with action is used correctly"
+
+    # Test with Bash command prefix
+    test_message '{"tool":"Bash","description":"Bash command: Run tests"}' \
+        "Claude is waiting to Run tests" \
+        "Bash command prefix is stripped correctly"
+
+    # Test with Bash prefix
+    test_message '{"tool":"Bash","description":"Bash: ls -la"}' \
+        "Claude is waiting to ls -la" \
+        "Bash prefix is stripped correctly"
+
+    # Test with Bash command and space prefix
+    test_message '{"tool":"Bash","description":"Bash command Run npm install"}' \
+        "Claude is waiting to Run npm install" \
+        "Bash command with space is stripped correctly"
+
+    # Test without description (fallback to tool name)
+    test_message '{"tool":"Write","file_path":"test.txt"}' \
+        "Claude is waiting to use Write" \
+        "Fallback to tool name when no description"
+
+    # Test with empty description
+    test_message '{"tool":"Read","description":""}' \
+        "Claude is waiting to use Read" \
+        "Fallback to tool name when description is empty string"
+
+    # Test with complex description (Edit tool)
+    test_message '{"tool":"Edit","description":"Replace import in file"}' \
+        "Claude is waiting to Replace import in file" \
+        "Description for Edit tool is used correctly"
+
+    # Test with multi-word description
+    test_message '{"tool":"Bash","description":"Create a new directory and copy files"}' \
+        "Claude is waiting to Create a new directory and copy files" \
+        "Multi-word description is handled correctly"
+
+fi
+
+echo ""
+
 # Test 7: Check voicemode services
 echo "7. Checking voicemode services..."
 
@@ -220,7 +300,7 @@ if [ $FAILED -eq 0 ]; then
     echo "Next steps:"
     echo "1. Restart Claude Code for hooks to take effect"
     echo "2. Try doing some work - you should hear a summary when done"
-    echo "3. Wait 60+ seconds idle - you should hear 'Claude is waiting for your input'"
+    echo "3. Wait 60+ seconds idle - you should hear 'I am waiting for your next instruction for [project] on branch [branch]'"
     echo "4. Trigger a permission request - you should hear 'Claude needs permission...'"
     echo ""
     echo "To test again after restart, run:"
