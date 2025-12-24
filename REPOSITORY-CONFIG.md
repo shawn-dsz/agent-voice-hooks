@@ -104,6 +104,39 @@ voicemode converse -m "Done" --voice af_sky --speed 1.5 --no-wait
 voicemode converse -m "$MESSAGE" --voice bm_george --no-wait
 ```
 
+### Example 5: Work vs Personal Projects
+
+Use different voice personalities to quickly identify context by sound alone:
+
+**Work project** (`/projects/work-api/.claude/hooks/task-summary.sh`):
+```bash
+#!/usr/bin/env bash
+voicemode converse -m "Work task completed" --voice am_adam --speed 1.0 --no-wait
+```
+
+**Personal project** (`/projects/personal-blog/.claude/hooks/task-summary.sh`):
+```bash
+#!/usr/bin/env bash
+voicemode converse -m "Done!" --voice af_sky --speed 1.3 --no-wait
+```
+
+### Example 6: Production vs Development
+
+Use a more serious, slower voice for production-related work:
+
+**Development** (`/projects/app-repo/.claude/hooks/task-summary.sh`):
+```bash
+#!/usr/bin/env bash
+voicemode converse -m "Dev task done" --voice af_sky --speed 1.2 --no-wait
+```
+
+**Production** (create `/projects/app-repo/.claude/hooks/production-deploy.sh` for deployment tasks):
+```bash
+#!/usr/bin/env bash
+# Use deeper, slower voice for production announcements
+voicemode converse -m "Production deployment completed" --voice onyx --speed 0.9 --tts-provider openai --no-wait
+```
+
 ### Example 4: Environment Variable Override
 
 Set voice preferences at the script level:
@@ -115,6 +148,39 @@ Set voice preferences at the script level:
 export VOICEMODE_KOKORO_DEFAULT_VOICE="am_michael"
 
 voicemode converse -m "Custom voice announcement" --no-wait
+```
+
+### Example 5: Silent Mode for Meetings
+
+When you're in meetings, you may want voice notifications disabled or very quiet:
+
+**Option A: Disable voice entirely**
+```bash
+#!/usr/bin/env bash
+# Silent mode - exit without speaking
+exit 0
+```
+
+**Option B: Minimal whisper messages**
+```bash
+#!/usr/bin/env bash
+voicemode converse -m "." --speed 0.5 --no-wait
+```
+
+**Option C: Environment variable toggle**
+```bash
+#!/usr/bin/env bash
+# Check for SILENT_MODE environment variable
+if [ "$SILENT_MODE" = "1" ]; then
+    exit 0
+fi
+
+voicemode converse -m "$MESSAGE" --no-wait
+```
+
+To enable silent mode:
+```bash
+export SILENT_MODE=1
 ```
 
 ---

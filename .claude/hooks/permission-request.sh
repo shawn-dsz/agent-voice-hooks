@@ -11,8 +11,9 @@ DESC=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); p
 
 # Build message with description if available
 if [ -n "$DESC" ]; then
-    # Remove "Bash" prefix from description if present (e.g., "Bash command" -> "")
-    CLEAN_DESC=$(echo "$DESC" | sed 's/^Bash command //;s/^Bash //')
+    # Remove "Bash" prefix from description if present (e.g., "Bash command: " -> "")
+    # Handles: "Bash command: ", "Bash command ", "Bash: ", "Bash "
+    CLEAN_DESC=$(echo "$DESC" | sed -E 's/^Bash( command)?[ :]+ ?//')
     MESSAGE="Claude is waiting to $CLEAN_DESC"
 else
     MESSAGE="Claude is waiting to use $TOOL"

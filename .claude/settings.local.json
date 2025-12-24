@@ -2,10 +2,19 @@
   "permissions": {
     "allow": [
       "mcp__voicemode__converse",
-      "Bash(git init:*)",
-      "Bash(git branch:*)",
+      "Bash(bash .claude/hooks/test-hooks.sh:*)",
+      "Bash(bash:*)",
+      "Bash(cat:*)",
+      "Bash(tee:*)",
+      "Bash(echo:*)",
+      "Bash(git stash:*)",
+      "WebSearch",
+      "Bash(tree:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
-    ]
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(ln:*)"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }

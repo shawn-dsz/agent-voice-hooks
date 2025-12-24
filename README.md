@@ -130,7 +130,25 @@ See [VoiceMode parameter docs](https://voice-mode.readthedocs.io/en/latest/) for
 
 ## Repository-Specific Configuration
 
-Want different voice settings for different projects? See [REPOSITORY-CONFIG.md](./REPOSITORY-CONFIG.md) for per-repository voice configuration.
+Different projects can use different voices, speeds, or behaviors. Simply create a `.claude/hooks/` folder in your project directory and customize the hook scripts there.
+
+**Example: Use a professional voice for work projects**
+
+```bash
+# In /projects/work/.claude/hooks/task-summary.sh
+#!/usr/bin/env bash
+voicemode converse -m "Work task completed" --voice am_adam --no-wait
+```
+
+**Example: Faster speech for prototyping**
+
+```bash
+# In /projects/prototype/.claude/hooks/task-summary.sh
+#!/usr/bin/env bash
+voicemode converse -m "Done" --voice af_sky --speed 1.5 --no-wait
+```
+
+See [REPOSITORY-CONFIG.md](./REPOSITORY-CONFIG.md) for complete guide with troubleshooting.
 
 ---
 
