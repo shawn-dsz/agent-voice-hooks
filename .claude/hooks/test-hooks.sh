@@ -195,9 +195,9 @@ if [ -f "$HOOKS_DIR/permission-request.sh" ]; then
 
             if [ -n "$DESC" ]; then
                 CLEAN_DESC=$(echo "$DESC" | sed -E "s/^Bash( command)?[ :]+ ?//")
-                MESSAGE="Claude is waiting to $CLEAN_DESC"
+                MESSAGE="I am waiting for permission to $CLEAN_DESC"
             else
-                MESSAGE="Claude is waiting to use $TOOL"
+                MESSAGE="I am waiting for permission to use $TOOL"
             fi
             echo "$MESSAGE"
         ' 2>&1)
@@ -214,42 +214,42 @@ if [ -f "$HOOKS_DIR/permission-request.sh" ]; then
 
     # Test with description containing action
     test_message '{"tool":"Bash","description":"List files in current directory"}' \
-        "Claude is waiting to List files in current directory" \
+        "I am waiting for permission to List files in current directory" \
         "Description with action is used correctly"
 
     # Test with Bash command prefix
     test_message '{"tool":"Bash","description":"Bash command: Run tests"}' \
-        "Claude is waiting to Run tests" \
+        "I am waiting for permission to Run tests" \
         "Bash command prefix is stripped correctly"
 
     # Test with Bash prefix
     test_message '{"tool":"Bash","description":"Bash: ls -la"}' \
-        "Claude is waiting to ls -la" \
+        "I am waiting for permission to ls -la" \
         "Bash prefix is stripped correctly"
 
     # Test with Bash command and space prefix
     test_message '{"tool":"Bash","description":"Bash command Run npm install"}' \
-        "Claude is waiting to Run npm install" \
+        "I am waiting for permission to Run npm install" \
         "Bash command with space is stripped correctly"
 
     # Test without description (fallback to tool name)
     test_message '{"tool":"Write","file_path":"test.txt"}' \
-        "Claude is waiting to use Write" \
+        "I am waiting for permission to use Write" \
         "Fallback to tool name when no description"
 
     # Test with empty description
     test_message '{"tool":"Read","description":""}' \
-        "Claude is waiting to use Read" \
+        "I am waiting for permission to use Read" \
         "Fallback to tool name when description is empty string"
 
     # Test with complex description (Edit tool)
     test_message '{"tool":"Edit","description":"Replace import in file"}' \
-        "Claude is waiting to Replace import in file" \
+        "I am waiting for permission to Replace import in file" \
         "Description for Edit tool is used correctly"
 
     # Test with multi-word description
     test_message '{"tool":"Bash","description":"Create a new directory and copy files"}' \
-        "Claude is waiting to Create a new directory and copy files" \
+        "I am waiting for permission to Create a new directory and copy files" \
         "Multi-word description is handled correctly"
 
 fi
