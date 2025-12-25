@@ -196,8 +196,10 @@ if [ -f "$HOOKS_DIR/permission-request.sh" ]; then
             if [ -n "$DESC" ]; then
                 CLEAN_DESC=$(echo "$DESC" | sed -E "s/^Bash( command)?[ :]+ ?//")
                 MESSAGE="I am waiting for permission to $CLEAN_DESC"
-            else
+            elif [ -n "$TOOL" ] && [ "$TOOL" != "unknown" ]; then
                 MESSAGE="I am waiting for permission to use $TOOL"
+            else
+                MESSAGE="I am waiting for your permission with"
             fi
             echo "$MESSAGE"
         ' 2>&1)
@@ -241,6 +243,16 @@ if [ -f "$HOOKS_DIR/permission-request.sh" ]; then
     test_message '{"tool":"Read","description":""}' \
         "I am waiting for permission to use Read" \
         "Fallback to tool name when description is empty string"
+
+    # Test with missing/unknown tool (generic message)
+    test_message '{}' \
+        "I am waiting for your permission with" \
+        "Generic message when tool is unknown"
+
+    # Test with tool=unknown explicitly
+    test_message '{"tool":"unknown"}' \
+        "I am waiting for your permission with" \
+        "Generic message when tool is explicitly unknown"
 
     # Test with complex description (Edit tool)
     test_message '{"tool":"Edit","description":"Replace import in file"}' \
