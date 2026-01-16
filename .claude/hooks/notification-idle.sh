@@ -2,6 +2,9 @@
 # Claude Code Hook: Notify when waiting for user input (idle)
 # Triggered by Notification event with idle_prompt matcher after 60+ seconds
 
+# Source voice helper to get project-specific voice
+source "$(dirname "$0")/voice-helper.sh"
+
 # Read stdin JSON to get transcript path
 INPUT=$(cat)
 TRANSCRIPT_PATH=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('transcript_path',''))" 2>/dev/null)
@@ -45,4 +48,4 @@ for line in sys.stdin:
 fi
 
 # Announce waiting for input via voicemode
-voicemode converse -m "$MESSAGE" --no-wait
+voicemode converse -m "$MESSAGE" --voice "$VOICE" --no-wait

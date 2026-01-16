@@ -79,16 +79,8 @@ else
     MESSAGE="$QUESTION"
 fi
 
-# Get voice from .voice file or default to af_sky
-VOICE_FILE="$(git rev-parse --show-toplevel 2>/dev/null || echo '.')/.voice"
-if [ -f "$VOICE_FILE" ]; then
-    VOICE=$(cat "$VOICE_FILE")
-else
-    VOICE="af_sky"  # default
-fi
-
 # Announce via voicemode
 # Using --no-wait because the user will respond via the UI, not voice
-voicemode converse -m "$MESSAGE" --voice "$VOICE" --no-wait
+voicemode converse -m "$MESSAGE" --voice af_sky --no-wait
 
 exit 0

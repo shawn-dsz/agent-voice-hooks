@@ -2,6 +2,9 @@
 # Claude Code Hook: Notify when waiting for permission
 # Triggered by PermissionRequest event when a permission dialog is shown
 
+# Source voice helper to get project-specific voice
+source "$(dirname "$0")/voice-helper.sh"
+
 # Get tool info from stdin
 INPUT=$(cat)
 
@@ -36,4 +39,4 @@ else
 fi
 
 # Announce permission request via voicemode
-voicemode converse -m "$MESSAGE" --no-wait
+voicemode converse -m "$MESSAGE" --voice "$VOICE" --no-wait

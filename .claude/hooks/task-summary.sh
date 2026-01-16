@@ -2,6 +2,9 @@
 # Claude Code Stop Hook: Announce completed tasks summary
 # Reads the most recent todo file and generates a ~10 word summary
 
+# Source voice helper to get project-specific voice
+source "$(dirname "$0")/voice-helper.sh"
+
 TODO_DIR="$HOME/.claude/todos"
 
 # Find the most recently modified todo file
@@ -9,7 +12,7 @@ LATEST_TODO=$(ls -t "$TODO_DIR"/*.json 2>/dev/null | head -1)
 
 if [ -z "$LATEST_TODO" ]; then
     # No todo file found, use default message
-    voicemode converse -m "Task completed. Ready for next instructions." --no-wait
+    voicemode converse -m "Task completed. Ready for next instructions." --voice "$VOICE" --no-wait
     exit 0
 fi
 
@@ -44,4 +47,4 @@ except Exception:
 " 2>/dev/null)
 
 # Announce via voicemode
-voicemode converse -m "$MESSAGE" --no-wait
+voicemode converse -m "$MESSAGE" --voice "$VOICE" --no-wait
