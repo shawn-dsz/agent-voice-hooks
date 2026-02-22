@@ -1,16 +1,16 @@
-# Kimi Voice Hooks
+# Agent Voice Hooks
 
 <div align="center">
-  <img src="logo.png" width="300" alt="Kimi Voice Hooks Logo">
+  <img src="logo.png" width="300" alt="Agent Voice Hooks Logo">
 </div>
 
-> **Bring Claude Code's voice notifications to Kimi** — get real-time voice announcements when tasks complete, permissions are needed, or your agent is waiting for you.
+> **Bring voice notifications to your AI coding assistant** — get real-time voice announcements when tasks complete, permissions are needed, or your agent is waiting for you. Works with **Claude Code** and **Kimi Code CLI**.
 
 ---
 
 ## Why Voice Hooks?
 
-Kimi Code CLI is powerful, but keeping your eyes glued to the terminal isn't always practical. Voice hooks transform your AI agent into an active collaborator that speaks up when it needs you—so you can grab a coffee, switch contexts, or work on something else while Kimi handles the heavy lifting.
+AI coding assistants are powerful, but keeping your eyes glued to the terminal isn't always practical. Voice hooks transform your AI agent into an active collaborator that speaks up when it needs you—so you can grab a coffee, switch contexts, or work on something else while your agent handles the heavy lifting.
 
 **Perfect for:**
 - Long-running tasks (tests, builds, deploys)
@@ -20,33 +20,53 @@ Kimi Code CLI is powerful, but keeping your eyes glued to the terminal isn't alw
 
 ---
 
+## Supported Agents
+
+| Agent | Integration Type | Setup |
+|-------|-----------------|-------|
+| **Claude Code** | Native hooks (`settings.json`) | Copy scripts to `~/.claude/`
+| **Kimi Code CLI** | Bridge wrapper (`kimi-voice`) | Use `kimi-voice` command |
+
+Both agents share the same **VoiceMode MCP** for high-quality text-to-speech.
+
+---
+
 ## What You'll Hear
 
 | Event | Voice Announcement | Example |
 |-------|-------------------|---------|
 | **Task completed** | "Done: [summary]" | "Done: Refactored the authentication module" |
 | **Permission needed** | "Waiting for permission to [action]" | "Waiting for permission to run tests" |
-| **Idle timeout** | "Kimi is waiting for your next instruction" | After 60 seconds of inactivity |
+| **Idle timeout** | "Agent is waiting for your next instruction" | After 60 seconds of inactivity |
 
 ---
 
 ## Quick Start
 
-### One-Command Install
+### Claude Code
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/kimi-voice-hooks/main/install.sh | bash
+# Clone the repository
+git clone https://github.com/yourusername/agent-voice-hooks.git
+cd agent-voice-hooks
+
+# Install Claude hooks
+./install.sh --claude
 ```
 
-Or clone and install manually:
+### Kimi Code CLI
 
 ```bash
-git clone https://github.com/yourusername/kimi-voice-hooks.git
-cd kimi-voice-hooks
-./install.sh
+# One-command install
+curl -fsSL https://raw.githubusercontent.com/yourusername/agent-voice-hooks/main/install.sh | bash
+
+# Or clone and install manually:
+git clone https://github.com/yourusername/agent-voice-hooks.git
+cd agent-voice-hooks
+./install.sh --kimi
 ```
 
-### Usage
+### Usage with Kimi
 
 Replace `kimi` with `kimi-voice`:
 
@@ -67,10 +87,14 @@ kimi-voice --help
 
 ### Optional: VoiceMode MCP
 
-For model-driven announcements (Kimi proactively speaking), register the voicemode MCP:
+For model-driven announcements (your agent proactively speaking), register the voicemode MCP:
 
 ```bash
 # This is done automatically by install.sh, but you can also do it manually:
+# For Claude:
+claude mcp add voicemode -- uvx --refresh voice-mode
+
+# For Kimi:
 kimi mcp add voicemode -- uvx --refresh voice-mode
 ```
 
@@ -83,6 +107,19 @@ Then activate the skill:
 ---
 
 ## How It Works
+
+### Claude Code (Native Hooks)
+
+Claude Code supports native hooks via `settings.json`. Agent Voice Hooks provide pre-configured scripts that Claude calls automatically:
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Claude    │────▶│   Hooks     │────▶│   Voice     │
+│    Code     │     │  (scripts)  │     │   (TTS)     │
+└─────────────┘     └─────────────┘     └─────────────┘
+```
+
+### Kimi Code CLI (Bridge)
 
 Kimi Voice Hooks use Kimi's **Wire protocol** (`kimi --wire`) to intercept events and trigger voice announcements:
 
@@ -144,7 +181,7 @@ timeout = 30         # Shorter idle timeout
 
 ### Simple Voice Override
 
-Create a `.voice` file with just the voice name (compatible with Claude voice hooks):
+Create a `.voice` file with just the voice name (compatible with both Claude and Kimi voice hooks):
 
 ```bash
 echo "am_adam" > .voice
@@ -203,27 +240,27 @@ backend = "silent"
 
 ## MCP Skill: voice-announce
 
-The voice-announce skill instructs Kimi to proactively use the voicemode tool:
+The voice-announce skill instructs your agent to proactively use the voicemode tool:
 
 ```
 /skill:voice-announce
 ```
 
-**When Kimi will speak:**
+**When your agent will speak:**
 - After completing significant tasks
 - Before asking questions with multiple options
 - When errors require user guidance
 - When long-running operations complete
 
-The bridge handles the basic events automatically; the skill adds conversational context.
+The bridge/hooks handle the basic events automatically; the skill adds conversational context.
 
 ---
 
-## Comparison with Claude Voice Hooks
+## Comparison: Claude vs Kimi
 
-| Feature | Claude Code | Kimi Voice Hooks |
-|---------|-------------|------------------|
-| Native hooks | Built-in (`settings.json`) | Bridge wrapper |
+| Feature | Claude Code | Kimi Code CLI |
+|---------|-------------|---------------|
+| Integration | Native hooks (`settings.json`) | Bridge wrapper (`kimi-voice`) |
 | Event types | Stop, Notification | Wire protocol events |
 | Installation | Copy scripts | One-command install |
 | Idle timeout | Native | Bridge timer |
@@ -238,7 +275,7 @@ The bridge handles the basic events automatically; the skill adds conversational
 ## Requirements
 
 - **Python** 3.10+
-- **Kimi Code CLI** (`kimi`)
+- **Claude Code** (`claude`) or **Kimi Code CLI** (`kimi`)
 - **macOS** or **Linux**
 - **VoiceMode** (optional but recommended)
 
@@ -258,6 +295,9 @@ Quick checks:
 ~/.local/share/kimi-voice/kimi-voice --help  # Should show help
 
 # Check MCP registration
+# For Claude:
+cat ~/.claude/mcp.json | grep voicemode
+# For Kimi:
 cat ~/.kimi/mcp.json | grep voicemode
 
 # Debug mode
@@ -280,4 +320,4 @@ MIT — feel free to use, modify, and distribute.
 
 ## About
 
-Built to make Kimi Code CLI feel more like a pair programmer. Contributions welcome!
+Built to make AI coding assistants feel more like pair programmers. Works with Claude Code and Kimi Code CLI. Contributions welcome!
