@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "voicemode": {
+      "command": "uvx",
+      "args": ["--refresh", "voice-mode"]
+    }
+  }
+}

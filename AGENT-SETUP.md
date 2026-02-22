@@ -1,350 +1,380 @@
-# Global Setup Guide: Claude Code Voice Notifications
+# Development Setup Guide: Kimi Voice Hooks
 
-Step-by-step instructions for AI agents to set up voice notification hooks **globally** for all Claude Code projects.
+Step-by-step instructions for setting up a development environment for Kimi Voice Hooks.
 
-> **Note:** This guide installs hooks globally in `~/.claude/`, so they work for every project automatically.
+> **Note:** This guide is for contributors and developers who want to modify or extend Kimi Voice Hooks.
+
+---
 
 ## Prerequisites
 
 Before starting, verify:
-- User is on macOS or Linux
+- You are on macOS or Linux (Windows/WSL not fully supported)
 - Python 3.10+ is installed (`python3 --version`)
-- Claude Code CLI is installed
-- User has permission to install system packages
+- Kimi Code CLI is installed (`kimi --version`)
+- Git is installed
 
-## Overview
+---
 
-You will:
-1. Install VoiceMode MCP server
-2. Copy hook scripts to global Claude config (`~/.claude/hooks/`)
-3. Merge hooks configuration into global settings.json
-4. Run validation tests
-5. Instruct user to restart Claude Code
-
-## Step-by-Step Instructions
-
-### Step 1: Verify Prerequisites
+## Quick Setup
 
 ```bash
-# Check OS
-uname -s  # Should output "Darwin" (macOS) or "Linux"
+# Clone the repository
+git clone https://github.com/yourusername/kimi-voice-hooks.git
+cd kimi-voice-hooks
 
-# Check Python (3.10+)
-python3 --version
+# Install in development mode
+./install.sh
+
+# Verify installation
+~/.local/bin/kimi-voice --version
 ```
 
-### Step 2: Install VoiceMode
+---
+
+## Development Installation
+
+### Step 1: Clone and Setup
 
 ```bash
-# Install uv package manager (if not installed)
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# Clone the repo
+git clone https://github.com/yourusername/kimi-voice-hooks.git
+cd kimi-voice-hooks
 
-# Install VoiceMode
-uvx voice-mode-install
+# Create a virtual environment (recommended)
+python3 -m venv .venv
+source .venv/bin/activate
 
-# Register VoiceMode with Claude Code
-claude mcp add --scope user voicemode -- uvx --refresh voice-mode
+# Install dependencies
+pip install -r bridge/requirements.txt
 ```
 
-**Verify VoiceMode is installed:**
+### Step 2: Install in Development Mode
+
 ```bash
-claude mcp list | grep voicemode
+# Install symlinks instead of copies for live editing
+ln -sf "$(pwd)/bridge" ~/.local/share/kimi-voice-dev
+ln -sf "$(pwd)/bridge/kimi-voice" ~/.local/bin/kimi-voice-dev
 ```
 
-### Step 3: Test VoiceMode
-
+Or use the install script with modifications:
 ```bash
-# Test voice output
-voicemode converse -m "Voice notifications are ready" --no-wait
+# Standard install (copies files)
+./install.sh
+
+# For development, manually symlink:
+rm -rf ~/.local/share/kimi-voice
+ln -s "$(pwd)/bridge" ~/.local/share/kimi-voice
 ```
 
-If you don't hear anything, see [TROUBLESHOOTING.md](./TROUBLESHOOTING.md).
-
-### Step 4: Create Global Hooks Directory
+### Step 3: Verify Development Setup
 
 ```bash
-# Create global hooks directory
-mkdir -p ~/.claude/hooks
-echo "Created: ~/.claude/hooks"
+# Test bridge directly
+python3 bridge/bridge.py --help
+
+# Test voice module
+python3 bridge/voice.py --info
+
+# Test event handlers
+python3 -c "
+import sys
+sys.path.insert(0, 'bridge')
+from events import EventHandler
+print('EventHandler imported successfully')
+"
 ```
 
-### Step 5: Create Hook Scripts
+---
 
-Create each script in `~/.claude/hooks/` with the exact content below.
+## Project Structure
 
-#### 5.1: task-summary.sh
+```
+kimi-voice-hooks/
+├── install.sh              # One-command installer
+├── README.md               # User documentation
+├── TROUBLESHOOTING.md      # Troubleshooting guide
+├── AGENT-SETUP.md          # This file
+├── KIMI-VOICE-HOOKS-PLAN.md # Implementation plan
+│
+├── bridge/                 # Core bridge implementation
+│   ├── __init__.py
+│   ├── bridge.py           # Main bridge (async I/O, Wire protocol)
+│   ├── events.py           # Event handlers (TurnEnd, ApprovalRequest)
+│   ├── voice.py            # TTS backend abstraction
+│   ├── idle_tracker.py     # Idle timer logic
+│   ├── config.py           # Configuration loading
+│   ├── kimi-voice          # CLI entry point (bash wrapper)
+│   └── requirements.txt    # Python dependencies
+│
+├── mcp/                    # MCP registration
+│   ├── mcp-config.json     # voicemode MCP config
+│   └── install-mcp.sh      # MCP install helper
+│
+├── skills/                 # Kimi skills
+│   └── voice-announce/
+│       └── SKILL.md        # Model-driven voice skill
+│
+├── config/                 # Default configurations
+│   ├── kimi-voice.toml     # Default config template
+│   └── voices.toml         # Voice presets
+│
+└── tests/                  # Test suite
+    ├── test-voice.sh       # Voice output tests
+    └── run-all-tests.sh    # Full test runner
+```
+
+---
+
+## Running Tests
+
+### Voice Tests
 
 ```bash
-cat > ~/.claude/hooks/task-summary.sh << 'EOF'
-#!/bin/bash
-# Claude Code Stop Hook: Announce completed tasks summary
-# Reads the most recent todo file and generates a ~10 word summary
+# Run voice output tests
+./tests/test-voice.sh
 
-TODO_DIR="$HOME/.claude/todos"
+# Quick mode (skip actual audio playback)
+./tests/test-voice.sh --quick
 
-# Find the most recently modified todo file
-LATEST_TODO=$(ls -t "$TODO_DIR"/*.json 2>/dev/null | head -1)
+# With mock TTS (for CI)
+./tests/test-voice.sh --mock
 
-if [ -z "$LATEST_TODO" ]; then
-    # No todo file found, use default message
-    voicemode converse -m "Task completed. Ready for next instructions." --no-wait
-    exit 0
-fi
+# Diagnostics only
+./tests/test-voice.sh --diagnostics
+```
 
-# Extract completed tasks from the todo file and generate summary
-MESSAGE=$(python3 - "
+### Integration Tests
+
+```bash
+# Run all tests
+./tests/run-all-tests.sh
+
+# Run specific test suites
+./tests/run-all-tests.sh --unit
+./tests/run-all-tests.sh --integration
+```
+
+### Manual Testing
+
+```bash
+# Test the bridge with mock Kimi
+echo '{"jsonrpc":"2.0","method":"event","params":{"type":"TurnEnd"}}' | \
+    python3 bridge/bridge.py
+
+# Test voice backends
+python3 bridge/voice.py "Test message" --backend voicemode
+python3 bridge/voice.py "Test message" --backend say
+python3 bridge/voice.py "Test message" --backend silent
+```
+
+---
+
+## How to Contribute
+
+### Making Changes
+
+1. **Create a feature branch:**
+   ```bash
+   git checkout -b feature/my-feature
+   ```
+
+2. **Make your changes** to the relevant files in `bridge/`
+
+3. **Test your changes:**
+   ```bash
+   # Reload the bridge (if using symlinks)
+   ~/.local/bin/kimi-voice "test prompt"
+   
+   # Or run directly
+   python3 bridge/bridge.py "test prompt"
+   ```
+
+4. **Run the test suite:**
+   ```bash
+   ./tests/run-all-tests.sh
+   ```
+
+### Code Style
+
+- **Python:** Follow PEP 8
+- **Bash:** Use `shellcheck` for shell scripts
+- **Type hints:** Use Python type hints for all new code
+
+```bash
+# Check Python style
+flake8 bridge/
+black bridge/
+
+# Check shell scripts
+shellcheck install.sh
+shellcheck bridge/kimi-voice
+```
+
+### Testing Checklist
+
+Before submitting a PR:
+
+- [ ] Code runs without errors on Python 3.10+
+- [ ] Type hints are included
+- [ ] Tests pass (`./tests/run-all-tests.sh`)
+- [ ] New features have tests
+- [ ] Documentation is updated
+- [ ] CHANGELOG.md is updated (if applicable)
+
+---
+
+## Debugging
+
+### Enable Debug Output
+
+```bash
+# Set debug environment variable
+export KIMI_VOICE_DEBUG=1
+
+# Run kimi-voice
+kimi-voice "test"
+```
+
+### Debug Specific Modules
+
+```bash
+# Debug config loading
+python3 -c "
+import sys
+sys.path.insert(0, 'bridge')
+from config import load_config, get_config_path
+print('Config path:', get_config_path())
+config = load_config()
+print('Config:', config)
+"
+
+# Debug voice backends
+python3 -c "
+import sys
+sys.path.insert(0, 'bridge')
+from voice import get_backend_info
 import json
-
-try:
-    with open('$LATEST_TODO', 'r') as f:
-        todos = json.load(f)
-
-    completed = [t.get('content', '') for t in todos if t.get('status') == 'completed']
-
-    if not completed:
-        print('Task completed. Ready for next instructions.')
-    elif len(completed) == 1:
-        # Single task - use it directly, truncate to 8 words
-        words = completed[0].split()
-        if len(words) > 8:
-            print('Done: ' + ' '.join(words[:8]) + '...')
-        else:
-            print('Done: ' + completed[0])
-    else:
-        # Multiple tasks - use the most recent (last in list)
-        words = completed[-1].split()
-        if len(words) > 8:
-            print(f'Done: {len(completed)} tasks. Last: ' + ' '.join(words[:8]) + '...')
-        else:
-            print(f'Done: {len(completed)} tasks. Last: ' + completed[-1])
-except Exception:
-    print('Task completed. Ready for next instructions.')
-" 2>/dev/null)
-
-# Announce via voicemode
-voicemode converse -m "$MESSAGE" --no-wait
-EOF
+print(json.dumps(get_backend_info(), indent=2))
+"
 ```
 
-#### 5.2: notification-idle.sh
+### Trace Wire Protocol
 
 ```bash
-cat > ~/.claude/hooks/notification-idle.sh << 'EOF'
-#!/bin/bash
-# Claude Code Hook: Notify when waiting for user input (idle)
-# Triggered by Notification event with idle_prompt matcher after 60+ seconds
+# Save all Wire protocol messages
+kimi --wire 2>&1 | tee wire-log.jsonl
 
-# Announce waiting for input via voicemode
-voicemode converse -m "Claude is waiting for your input" --no-wait
-EOF
+# Or with the bridge
+KIMI_VOICE_DEBUG=1 kimi-voice "test" 2>&1 | tee bridge-debug.log
 ```
 
-#### 5.3: permission-request.sh
+---
 
-```bash
-cat > ~/.claude/hooks/permission-request.sh << 'EOF'
-#!/bin/bash
-# Claude Code Hook: Notify when waiting for permission
-# Triggered by PermissionRequest event when a permission dialog is shown
+## Common Development Tasks
 
-# Get tool info from stdin
-INPUT=$(cat)
+### Add a New TTS Backend
 
-# Extract the tool name and description
-TOOL=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('tool','unknown'))" 2>/dev/null)
-DESC=$(echo "$INPUT" | python3 -c "import json,sys; data=json.load(sys.stdin); print(data.get('description',''))" 2>/dev/null)
+1. Edit `bridge/voice.py`:
+   ```python
+   class TTSBackend(Enum):
+       # ... existing backends ...
+       NEW_BACKEND = auto()
+   
+   async def _speak_new_backend(message: str, voice: str) -> None:
+       # Implementation here
+       pass
+   
+   # Update speak() function
+   async def speak(message: str, config: VoiceConfig | None = None) -> None:
+       # ...
+       if backend == TTSBackend.NEW_BACKEND:
+           await _speak_new_backend(message, cfg.voice)
+   ```
 
-# Build message with description if available
-if [ -n "$DESC" ]; then
-    # Remove "Bash" prefix from description if present
-    CLEAN_DESC=$(echo "$DESC" | sed 's/^Bash command //;s/^Bash //')
-    MESSAGE="Claude is waiting to $CLEAN_DESC"
-else
-    MESSAGE="Claude is waiting to use $TOOL"
-fi
+2. Update `detect_backend()` if auto-detection is desired
 
-# Announce permission request via voicemode
-voicemode converse -m "$MESSAGE" --no-wait
-EOF
-```
+3. Add tests in `tests/test-voice.sh`
 
-#### 5.4: Make Scripts Executable
+4. Update documentation
 
-```bash
-chmod +x ~/.claude/hooks/*.sh
-echo "✓ Hook scripts created and made executable"
-```
+### Add a New Event Handler
 
-### Step 6: Create Global settings.json
+1. Edit `bridge/events.py`:
+   ```python
+   async def on_new_event(self, payload: dict[str, Any], config: Config) -> None:
+       """Handle NewEvent type."""
+       # Implementation
+   ```
 
-**Check if settings.json already exists:**
+2. Wire it up in `bridge/bridge.py`:
+   ```python
+   async def _handle_wire_event(...):
+       # ...
+       elif event_type == "NewEvent":
+           await event_handler.on_new_event(payload, config)
+   ```
 
-```bash
-if [ -f ~/.claude/settings.json ]; then
-    echo "⚠ Existing ~/.claude/settings.json found"
-    echo ""
-    echo "Merging hooks configuration..."
-    cat .claude/settings.json >> ~/.claude/settings.json
-    echo "✓ Hooks merged into ~/.claude/settings.json"
-else
-    echo "Creating ~/.claude/settings.json..."
-    cat > ~/.claude/settings.json << 'EOF'
-{
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/task-summary.sh"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "idle_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/notification-idle.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "permission_prompt",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/permission-request.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-EOF
-    echo "✓ ~/.claude/settings.json created"
-fi
-```
+3. Add config option in `bridge/config.py` if needed
 
-### Step 7: Run Validation Tests
+### Modify Configuration
 
-```bash
-# Create test script
-cat > ~/.claude/hooks/test-hooks.sh << 'TESTEOF'
-#!/bin/bash
-# Quick validation test for Claude Code voice notification hooks
+1. Edit `bridge/config.py` - add field to `Config` dataclass
+2. Update `create_default_config()` in `config.py`
+3. Update `config/kimi-voice.toml` template
+4. Document in README.md
 
-HOOKS_DIR="$HOME/.claude/hooks"
+---
 
-echo "🔧 Claude Code Hooks Validation"
-echo "================================"
-echo ""
+## Release Process
 
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-NC='\033[0m'
+1. **Update version:**
+   - Update `VERSION` in `install.sh`
+   - Update `VERSION` in `bridge/kimi-voice`
 
-PASSED=0
-FAILED=0
+2. **Update CHANGELOG.md:**
+   - Document all changes
+   - Credit contributors
 
-pass() { echo -e "${GREEN}✓${NC} $1"; ((PASSED++)); }
-fail() { echo -e "${RED}✗${NC} $1"; ((FAILED++)); }
+3. **Run full test suite:**
+   ```bash
+   ./tests/run-all-tests.sh
+   ```
 
-# Test 1: Scripts exist
-for script in task-summary.sh notification-idle.sh permission-request.sh; do
-    if [ -x "$HOOKS_DIR/$script" ]; then
-        pass "$script exists and executable"
-    else
-        fail "$script missing or not executable"
-    fi
-done
+4. **Test clean install:**
+   ```bash
+   # In a clean environment
+   ./install.sh
+   kimi-voice "test"
+   ```
 
-# Test 2: Settings.json
-if [ -f "$HOME/.claude/settings.json" ]; then
-    if jq -e '.hooks.Stop' "$HOME/.claude/settings.json" >/dev/null 2>&1; then
-        pass "Stop hook registered"
-    else
-        fail "Stop hook not registered"
-    fi
-    if jq -e '.hooks.Notification[] | select(.matcher == "idle_prompt")' "$HOME/.claude/settings.json" >/dev/null 2>&1; then
-        pass "Idle hook registered"
-    else
-        fail "Idle hook not registered"
-    fi
-else
-    fail "settings.json not found"
-fi
+5. **Create git tag:**
+   ```bash
+   git tag -a v0.1.0 -m "Release v0.1.0"
+   git push origin v0.1.0
+   ```
 
-# Test 3: voicemode
-if command -v voicemode >/dev/null 2>&1; then
-    pass "voicemode installed"
-else
-    fail "voicemode not found"
-fi
+---
 
-echo ""
-echo "Results: $PASSED passed, $FAILED failed"
-if [ $FAILED -eq 0 ]; then
-    echo -e "${GREEN}✓ All checks passed!${NC}"
-    exit 0
-else
-    echo -e "${RED}✗ Some checks failed${NC}"
-    exit 1
-fi
-TESTEOF
+## Resources
 
-chmod +x ~/.claude/hooks/test-hooks.sh
+- **Kimi Wire Protocol:** Run `kimi --wire --help` for protocol details
+- **VoiceMode Docs:** https://github.com/yourusername/voice-mode
+- **Python asyncio:** https://docs.python.org/3/library/asyncio.html
 
-# Run the test
-~/.claude/hooks/test-hooks.sh
-```
+---
 
-### Step 8: Final User Instructions
+## Agent Checklist (For AI Contributors)
 
-**Inform the user:**
+When setting up or modifying this project:
 
-```
-✅ Voice notification hooks installed globally!
-
-Files created:
-- ~/.claude/hooks/task-summary.sh
-- ~/.claude/hooks/notification-idle.sh
-- ~/.claude/hooks/permission-request.sh
-- ~/.claude/hooks/test-hooks.sh
-- ~/.claude/settings.json (or merged)
-
-What you'll hear:
-• "Done: [task summary]" when tasks complete
-• "Claude is waiting for your input" after 60 seconds idle
-• "Claude is waiting to [action]" when permission is needed
-
-Next steps:
-1. Restart Claude Code completely (quit and reopen)
-2. The hooks will now work for ALL projects automatically
-
-To verify: ~/.claude/hooks/test-hooks.sh
-
-To customize messages, edit the scripts in ~/.claude/hooks/
-```
-
-## Troubleshooting
-
-See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for:
-- Hooks not triggering
-- No voice output
-- VoiceMode installation issues
-- settings.json conflicts
-
-## Agent Checklist
-
-- [ ] Verified OS and Python
-- [ ] Installed VoiceMode and registered with Claude Code
-- [ ] Tested VoiceMode voice output
-- [ ] Created ~/.claude/hooks/ directory
-- [ ] Created all three hook scripts
-- [ ] Made scripts executable
-- [ ] Created or merged ~/.claude/settings.json
-- [ ] Validated installation with test script
-- [ ] Provided restart instructions to user
+- [ ] Cloned repo and created virtual environment
+- [ ] Installed dependencies from `bridge/requirements.txt`
+- [ ] Verified `python3 --version` is 3.10+
+- [ ] Can run `python3 bridge/bridge.py --help`
+- [ ] Can run `python3 bridge/voice.py --info`
+- [ ] Tests pass (`./tests/test-voice.sh --quick`)
+- [ ] Changes tested with `kimi-voice "test prompt"`
+- [ ] Code follows existing style patterns
+- [ ] Type hints added for new functions
+- [ ] Documentation updated if needed

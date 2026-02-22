@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+# Kimi Voice - Voice-enabled wrapper for Kimi Code CLI
+# 
+# This script wraps the Kimi CLI with voice notification support,
+# intercepting Wire protocol events to announce task completion,
+# permission requests, and idle timeouts.
+#
+# Usage: kimi-voice [ARGS...]
+#        All arguments are passed through to `kimi --wire`
+#
+# Examples:
+#   kimi-voice "help me refactor auth"
+#   kimi-voice --model kimi-k2 "explain this code"
+#   kimi-voice --help
+
+set -euo pipefail
+
+# Script directory (for finding bridge.py)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Version information
+VERSION="0.1.0"
+
+# Help message
+show_help() {
+    cat << 'EOF'
+Kimi Voice - Voice-enabled wrapper for Kimi Code CLI
+
+USAGE:
+    kimi-voice [ARGS...]
+
+DESCRIPTION:
+    Wraps the Kimi CLI with voice notification support. Announces task
+    completion, permission requests, and idle timeouts using your
+    configured TTS backend (voicemode, say, or silent).
+
+ARGUMENTS:
+    All arguments are passed through to `kimi --wire`.
+
+OPTIONS:
+    --help, -h      Show this help message and exit
+    --version, -v   Show version information and exit
+
+CONFIGURATION:
+    ~/.config/kimi-voice/config.toml    Global configuration
+    ./.kimi-voice.toml                  Project-local configuration
+    ./.voice                            Simple voice name (Claude compatible)
+
+ENVIRONMENT:
+    KIMI_VOICE_TTS_BACKEND      Override TTS backend
+    KIMI_VOICE_VOICE            Override voice name
+    KIMI_VOICE_SPEED            Override speech speed
+    KIMI_VOICE_IDLE_TIMEOUT     Override idle timeout
+    KIMI_VOICE_IDLE_ENABLED     Enable/disable idle announcements
+
+EXAMPLES:
+    # Start an interactive session with voice
+    kimi-voice
+
+    # Run a specific command
+    kimi-voice "refactor the authentication module"
+
+    # Use a specific model
+    kimi-voice --model kimi-k2 "explain this function"
+
+For more information, visit:
+    https://github.com/yourusername/kimi-voice-hooks
+EOF
+}
+
+# Version message
+show_version() {
+    echo "kimi-voice version $VERSION"
+    echo "Bridge for Kimi Code CLI with voice notifications"
+}
+
+# Check if Python 3.10+ is available
+check_python() {
+    local python_cmd
+    
+    # Try python3 first, then python
+    if command -v python3 &> /dev/null; then
+        python_cmd="python3"
+    elif command -v python &> /dev/null; then
+        python_cmd="python"
+    else
+        echo "Error: Python 3 is required but not found." >&2
+        echo "Please install Python 3.10 or later." >&2
+        return 1
+    fi
+    
+    # Check version (need 3.10+)
+    local version
+    version=$($python_cmd --version 2>&1 | cut -d' ' -f2)
+    local major
+    local minor
+    major=$(echo "$version" | cut -d'.' -f1)
+    minor=$(echo "$version" | cut -d'.' -f2)
+    
+    if [[ "$major" -lt 3 ]] || [[ "$major" -eq 3 && "$minor" -lt 10 ]]; then
+        echo "Error: Python 3.10+ is required, found $version" >&2
+        return 1
+    fi
+    
+    echo "$python_cmd"
+}
+
+# Check if kimi CLI is available
+check_kimi() {
+    if ! command -v kimi &> /dev/null; then
+        echo "Error: 'kimi' CLI not found." >&2
+        echo "Please install Kimi Code CLI first." >&2
+        echo "Visit: https://github.com/yourusername/kimi-cli" >&2
+        return 1
+    fi
+    return 0
+}
+
+# Main entry point
+main() {
+    # Handle help and version flags
+    case "${1:-}" in
+        --help|-h)
+            show_help
+            exit 0
+            ;;
+        --version|-v)
+            show_version
+            exit 0
+            ;;
+    esac
+    
+    # Check prerequisites
+    PYTHON_CMD=$(check_python) || exit 1
+    check_kimi || exit 1
+    
+    # Determine bridge.py path
+    # Try several locations in order of preference
+    local bridge_script
+    
+    if [[ -f "$SCRIPT_DIR/bridge.py" ]]; then
+        # Same directory as this script
+        bridge_script="$SCRIPT_DIR/bridge.py"
+    elif [[ -f "$SCRIPT_DIR/../bridge/bridge.py" ]]; then
+        # Parent directory structure (installed layout)
+        bridge_script="$SCRIPT_DIR/../bridge/bridge.py"
+    elif [[ -f "${KIMI_VOICE_BRIDGE:-}" ]]; then
+        # Environment override
+        bridge_script="$KIMI_VOICE_BRIDGE"
+    else
+        echo "Error: Could not find bridge.py" >&2
+        echo "Expected at: $SCRIPT_DIR/bridge.py" >&2
+        exit 1
+    fi
+    
+    # Run the bridge with all arguments
+    exec "$PYTHON_CMD" "$bridge_script" "$@"
+}
+
+# Run main function
+main "$@"

@@ -1,0 +1,82 @@
+# Kimi Voice Hooks - Default Configuration
+# 
+# This is the default/global configuration file for Kimi Voice Hooks.
+# Place this file at: ~/.config/kimi-voice/config.toml
+#
+# You can also create per-project overrides by adding a .kimi-voice.toml
+# file to your project directory. Project configs override global settings.
+#
+# For simple voice overrides, create a .voice file in your project directory
+# containing just the voice name (e.g., "af_sky"). This is compatible with
+# Claude voice hooks.
+#
+# Environment variables (all optional):
+#   KIMI_VOICE_TTS_BACKEND     - Override TTS backend
+#   KIMI_VOICE_VOICE           - Override voice
+#   KIMI_VOICE_SPEED           - Override speech speed
+#   KIMI_VOICE_IDLE_TIMEOUT    - Override idle timeout
+#   KIMI_VOICE_IDLE_ENABLED    - Override idle enabled (true/false)
+#   KIMI_VOICE_ANNOUNCE_*      - Override announcement settings
+#   KIMI_VOICE_KIMI_COMMAND    - Override kimi binary path
+
+[voice]
+# TTS backend to use for voice announcements
+# Options:
+#   - "voicemode"  : VoiceMode CLI (recommended, cross-platform)
+#   - "say"        : macOS built-in say command
+#   - "kokoro"     : Kokoro TTS (local, fast)
+#   - "openai"     : OpenAI TTS API (requires API key)
+backend = "voicemode"
+
+# Voice identifier - specific to the backend
+# Common voices by backend:
+#   voicemode: af_sky, af_nicole, am_adam, am_echo
+#   say:       Alex, Samantha, Victoria, Fred
+#   kokoro:    af_heart, af_bella, am_echo, am_onyx
+#   openai:    alloy, echo, fable, onyx, nova, shimmer
+#
+# See voices.toml for a complete list of presets and aliases.
+voice = "af_sky"
+
+# Speech rate multiplier
+#   0.5 = half speed, 2.0 = double speed
+# Note: Not all backends support speed adjustment
+speed = 1.0
+
+[idle]
+# Idle timeout in seconds
+# After this period of inactivity, Kimi will announce it's waiting.
+# Set to 0 to disable idle detection (though idle.enabled also controls this).
+timeout = 60
+
+# Enable idle timeout announcements
+# When true, Kimi will speak after the idle timeout period.
+enabled = true
+
+[events]
+# Announce task completion (TurnEnd event)
+# Kimi will speak a brief summary when it finishes a task.
+announce_turn_end = true
+
+# Announce permission requests (ApprovalRequest event)
+# Kimi will speak when it needs your approval for an action.
+announce_approval = true
+
+# Announce idle timeout
+# Kimi will speak when the idle timer fires.
+announce_idle = true
+
+# Announce errors and interruptions
+# Kimi will speak when an error occurs or a step is interrupted.
+# Set to true if you want audio feedback on errors.
+announce_errors = false
+
+[bridge]
+# Path to the kimi binary
+# Use this if kimi is not in your PATH or you want to use a specific version.
+kimi_command = "kimi"
+
+# Additional arguments to pass to kimi --wire
+# These are appended after any user-provided arguments.
+# Example: extra_args = ["--model", "kimi-k2", "--no-agent"]
+extra_args = []

@@ -1,16 +1,16 @@
-# Claude Voice Notification Hooks
+# Kimi Voice Hooks
 
 <div align="center">
-  <img src="logo.png" width="300" alt="Claude Voice Notification Hooks Logo">
+  <img src="logo.png" width="300" alt="Kimi Voice Hooks Logo">
 </div>
 
-> **Turn Claude into a vocal collaborator** — get real-time voice announcements when tasks complete, permissions are needed, or your agent is waiting for you.
+> **Bring Claude Code's voice notifications to Kimi** — get real-time voice announcements when tasks complete, permissions are needed, or your agent is waiting for you.
 
 ---
 
 ## Why Voice Hooks?
 
-Claude Code is powerful, but keeping your eyes glued to the terminal isn't always practical. Voice hooks transform your AI agent into an active collaborator that speaks up when it needs you—so you can grab a coffee, switch contexts, or work on something else while Claude handles the heavy lifting.
+Kimi Code CLI is powerful, but keeping your eyes glued to the terminal isn't always practical. Voice hooks transform your AI agent into an active collaborator that speaks up when it needs you—so you can grab a coffee, switch contexts, or work on something else while Kimi handles the heavy lifting.
 
 **Perfect for:**
 - Long-running tasks (tests, builds, deploys)
@@ -24,139 +24,251 @@ Claude Code is powerful, but keeping your eyes glued to the terminal isn't alway
 
 | Event | Voice Announcement | Example |
 |-------|-------------------|---------|
-| **Task completed** | "Done: [summary]" | "Done: Built and tested the application" |
-| **Waiting for input** | "Claude is waiting for your input" | After 60 seconds of idle time |
-| **Permission needed** | "Claude is waiting to [action]" | "Claude is waiting to Run hook installation test" |
-
-> **Smart Context**: Permission announcements automatically extract what Claude is actually trying to do—so you hear the action, not just the tool name.
+| **Task completed** | "Done: [summary]" | "Done: Refactored the authentication module" |
+| **Permission needed** | "Waiting for permission to [action]" | "Waiting for permission to run tests" |
+| **Idle timeout** | "Kimi is waiting for your next instruction" | After 60 seconds of inactivity |
 
 ---
 
 ## Quick Start
 
-### Step 1: Install VoiceMode (one-time, global)
+### One-Command Install
 
 ```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uvx voice-mode-install
-claude mcp add --scope user voicemode -- uvx --refresh voice-mode
+curl -fsSL https://raw.githubusercontent.com/yourusername/kimi-voice-hooks/main/install.sh | bash
 ```
 
-*VoiceMode is the voice engine that powers these hooks. You only need to install it once.*
-
-### Step 2: Install the Hooks Globally
-
-Copy the hooks and settings to your global Claude configuration:
+Or clone and install manually:
 
 ```bash
-# Copy the hooks folder
-cp -r .claude/hooks ~/.claude/
-
-# Merge settings.json into your global config
-cat .claude/settings.json >> ~/.claude/settings.json
+git clone https://github.com/yourusername/kimi-voice-hooks.git
+cd kimi-voice-hooks
+./install.sh
 ```
 
-*This enables voice notifications for **all** your Claude Code projects automatically.*
+### Usage
 
-### Step 3: Test It
+Replace `kimi` with `kimi-voice`:
 
 ```bash
-~/.claude/hooks/test-hooks.sh
+# Instead of:
+kimi "help me refactor this code"
+
+# Use:
+kimi-voice "help me refactor this code"
 ```
 
-You should hear voice confirmations for each event type.
+All arguments are passed through to Kimi:
+
+```bash
+kimi-voice --model kimi-k2 "explain this function"
+kimi-voice --help
+```
+
+### Optional: VoiceMode MCP
+
+For model-driven announcements (Kimi proactively speaking), register the voicemode MCP:
+
+```bash
+# This is done automatically by install.sh, but you can also do it manually:
+kimi mcp add voicemode -- uvx --refresh voice-mode
+```
+
+Then activate the skill:
+
+```
+/skill:voice-announce
+```
 
 ---
 
 ## How It Works
 
-These hooks use Claude Code's native hook system to listen for events and trigger voice announcements via VoiceMode:
+Kimi Voice Hooks use Kimi's **Wire protocol** (`kimi --wire`) to intercept events and trigger voice announcements:
 
-| Hook File | Trigger | What It Does |
-|-----------|---------|--------------|
-| `permission-request.sh` | Permission dialog shown | Announces what Claude is waiting to do |
-| `task-summary.sh` | Task completes | Reads the task summary aloud |
-| `notification-idle.sh` | Idle for 60+ seconds | Reminds you that Claude is waiting |
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Terminal  │────▶│ kimi-voice  │────▶│ kimi --wire │
+│   (stdin)   │     │  (bridge)   │     │   (Kimi)    │
+└─────────────┘     └──────┬──────┘     └─────────────┘
+                           │
+                           ▼
+                    ┌─────────────┐
+                    │   Voice     │
+                    │  (TTS)      │
+                    └─────────────┘
+```
 
-All hooks are configured in `~/.claude/settings.json` using the `Notification` and `Stop` event types.
+The bridge transparently proxies all communication while intercepting:
+- **TurnEnd** events → Announce task completion
+- **ApprovalRequest** events → Announce permission needs
+- **Idle timer** → Announce when waiting for input
 
 ---
 
-## Customization
+## Configuration
 
-### Changing the Voice
+### Global Config
 
-**Per-script (quick method):**
+Edit `~/.config/kimi-voice/config.toml`:
 
-Edit the hook scripts directly to add a `voice` parameter:
+```toml
+[voice]
+backend = "voicemode"  # "voicemode", "say", or "silent"
+voice = "af_sky"       # Voice identifier
+speed = 1.0            # Speech rate
 
-```bash
-~/.claude/hooks/permission-request.sh
-~/.claude/hooks/task-summary.sh
-~/.claude/hooks/notification-idle.sh
+[idle]
+timeout = 60           # Seconds before idle announcement
+enabled = true
+
+[events]
+announce_turn_end = true
+announce_approval = true
+announce_idle = true
+announce_errors = false
 ```
 
-Each script calls `voicemode converse`. Add your preferred voice:
+### Project Config
 
-```bash
-# Example: Use male voice
-converse "Your message here" voice="am_adam"
+Create `.kimi-voice.toml` in your project directory to override global settings:
+
+```toml
+[voice]
+voice = "am_adam"  # Use male voice for this project
+speed = 1.2          # Slightly faster
+
+[idle]
+timeout = 30         # Shorter idle timeout
 ```
 
-**Available voices:**
-- **Kokoro (local):** `af_sky`, `af_sarah`, `am_adam`, `am_michael`, `ef_dora`, `bm_george`, `bm_lewis`
-- **OpenAI (cloud):** `nova`, `shimmer`, `alloy`, `echo`, `fable`, `onyx`
+### Simple Voice Override
 
-**Global default (recommended):**
-
-Set a default voice for all VoiceMode conversations by editing `~/.voicemode/voicemode.env`:
+Create a `.voice` file with just the voice name (compatible with Claude voice hooks):
 
 ```bash
-# Add or edit these lines:
-export VOICEMODE_VOICES="am_adam,alloy"           # Preferred voices (first available is used)
-export VOICEMODE_KOKORO_DEFAULT_VOICE="am_adam"   # Default for local Kokoro TTS
+echo "am_adam" > .voice
 ```
 
-This affects all VoiceMode usage system-wide, not just hooks.
+### Environment Variables
 
-**Other options:**
-- `speed="1.5"` - Adjust playback speed (0.25 to 4.0)
-- `tts_provider="kokoro"` - Force local vs OpenAI
-- `tts_provider="openai"` - Force cloud TTS
+Override any setting via environment:
 
-See [VoiceMode parameter docs](https://voice-mode.readthedocs.io/en/latest/) for complete reference.
+```bash
+export KIMI_VOICE_VOICE="af_nicole"
+export KIMI_VOICE_SPEED="1.5"
+export KIMI_VOICE_IDLE_TIMEOUT="30"
+```
 
 ---
 
-## Repository-Specific Configuration
+## Voice Backends
 
-Different projects can use different voices, speeds, or behaviors. Simply create a `.claude/hooks/` folder in your project directory and customize the hook scripts there.
+### VoiceMode (Recommended)
 
-**Example: Use a professional voice for work projects**
-
-```bash
-# In /projects/work/.claude/hooks/task-summary.sh
-#!/usr/bin/env bash
-voicemode converse -m "Work task completed" --voice am_adam --no-wait
-```
-
-**Example: Faster speech for prototyping**
+High-quality TTS with Kokoro and OpenAI voices:
 
 ```bash
-# In /projects/prototype/.claude/hooks/task-summary.sh
-#!/usr/bin/env bash
-voicemode converse -m "Done" --voice af_sky --speed 1.5 --no-wait
+# Install
+uvx voice-mode-install
+
+# Available voices
+voicemode voices list
 ```
 
-See [REPOSITORY-CONFIG.md](./REPOSITORY-CONFIG.md) for complete guide with troubleshooting.
+**Popular voices:** `af_sky`, `af_nicole`, `af_bella`, `am_adam`, `am_echo`
+
+### macOS `say` (Built-in)
+
+Zero-dependency fallback for macOS:
+
+```toml
+[voice]
+backend = "say"
+voice = "Samantha"
+```
+
+**Available voices:** `say -v '?'`
+
+### Silent Mode
+
+Logs to stderr without producing audio (useful for CI):
+
+```toml
+[voice]
+backend = "silent"
+```
+
+---
+
+## MCP Skill: voice-announce
+
+The voice-announce skill instructs Kimi to proactively use the voicemode tool:
+
+```
+/skill:voice-announce
+```
+
+**When Kimi will speak:**
+- After completing significant tasks
+- Before asking questions with multiple options
+- When errors require user guidance
+- When long-running operations complete
+
+The bridge handles the basic events automatically; the skill adds conversational context.
+
+---
+
+## Comparison with Claude Voice Hooks
+
+| Feature | Claude Code | Kimi Voice Hooks |
+|---------|-------------|------------------|
+| Native hooks | Built-in (`settings.json`) | Bridge wrapper |
+| Event types | Stop, Notification | Wire protocol events |
+| Installation | Copy scripts | One-command install |
+| Idle timeout | Native | Bridge timer |
+| Permission prompts | Native | Intercepted from wire |
+| MCP support | Yes | Yes (shared voicemode) |
+| `.voice` file | Yes | Yes (compatible) |
+
+**Key difference:** Claude has native hook support; Kimi requires the `kimi-voice` bridge wrapper to intercept Wire protocol events.
 
 ---
 
 ## Requirements
 
-- **Claude Code** (latest version)
-- **VoiceMode** MCP server (installed above)
-- macOS or Linux
+- **Python** 3.10+
+- **Kimi Code CLI** (`kimi`)
+- **macOS** or **Linux**
+- **VoiceMode** (optional but recommended)
+
+---
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) for detailed solutions to common issues.
+
+Quick checks:
+
+```bash
+# Verify installation
+~/.local/share/kimi-voice/kimi-voice --version
+
+# Test voice output
+~/.local/share/kimi-voice/kimi-voice --help  # Should show help
+
+# Check MCP registration
+cat ~/.kimi/mcp.json | grep voicemode
+
+# Debug mode
+KIMI_VOICE_DEBUG=1 kimi-voice "test"
+```
+
+---
+
+## Development
+
+See [AGENT-SETUP.md](./AGENT-SETUP.md) for development setup and contribution guidelines.
 
 ---
 
@@ -168,4 +280,4 @@ MIT — feel free to use, modify, and distribute.
 
 ## About
 
-Built to make Claude Code feel more like a pair programmer and less like a headless CLI. Contributions welcome!
+Built to make Kimi Code CLI feel more like a pair programmer. Contributions welcome!

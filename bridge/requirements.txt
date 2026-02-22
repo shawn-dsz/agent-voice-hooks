@@ -1,0 +1,6 @@
+# Kimi Voice Hooks - Bridge Dependencies
+# Minimum Python version: 3.10
+
+# Configuration file handling
+platformdirs>=3.0.0
+tomli>=2.0.0

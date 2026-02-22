@@ -1,0 +1,284 @@
+# Kimi Voice Hooks - Voice Presets and Aliases
+#
+# This file maps friendly voice names to actual voice IDs for each TTS backend.
+# These presets provide a consistent interface across different backends.
+#
+# You can reference these presets in your config:
+#   voice = "default"      # Uses the default voice for your backend
+#   voice = "calm"         # Uses a calm-sounding voice
+#   voice = "energetic"    # Uses an energetic voice
+#
+# Or use backend-specific voice IDs directly:
+#   voice = "af_sky"       # VoiceMode/Kokoro voice
+#   voice = "Samantha"     # macOS say voice
+
+# ============================================================================
+# Voice Presets (Backend-Agnostic Aliases)
+# ============================================================================
+[presets]
+# Default voice for each backend
+default = { voicemode = "af_sky", say = "Alex", kokoro = "af_heart", openai = "alloy" }
+
+# Clear, professional voices - good for coding
+professional = { voicemode = "af_sky", say = "Alex", kokoro = "af_sky", openai = "alloy" }
+
+# Calm, soothing voices - good for long sessions
+calm = { voicemode = "af_nicole", say = "Samantha", kokoro = "af_bella", openai = "nova" }
+
+# Energetic, upbeat voices - good for quick tasks
+energetic = { voicemode = "af_bella", say = "Victoria", kokoro = "af_heart", openai = "shimmer" }
+
+# Deep, authoritative voices - good for announcements
+authoritative = { voicemode = "am_adam", say = "Fred", kokoro = "am_onyx", openai = "onyx" }
+
+# Soft, gentle voices - good for quiet environments
+soft = { voicemode = "af_river", say = "Vicki", kokoro = "af_bella", openai = "fable" }
+
+# ============================================================================
+# VoiceMode Voices (via voicemode CLI)
+# ============================================================================
+# VoiceMode provides high-quality AI voices via the voice-mode package.
+# Install with: pip install voice-mode
+# 
+# American Female voices
+[voicemode.af_sky]
+name = "Sky"
+gender = "female"
+locale = "en-US"
+description = "Clear, professional American female voice"
+
+[voicemode.af_nicole]
+name = "Nicole"
+gender = "female"
+locale = "en-US"
+description = "Warm, friendly American female voice"
+
+[voicemode.af_bella]
+name = "Bella"
+gender = "female"
+locale = "en-US"
+description = "Energetic, upbeat American female voice"
+
+[voicemode.af_river]
+name = "River"
+gender = "female"
+locale = "en-US"
+description = "Soft, gentle American female voice"
+
+[voicemode.af_sarah]
+name = "Sarah"
+gender = "female"
+locale = "en-US"
+description = "Professional American female voice"
+
+[voicemode.af_allison]
+name = "Allison"
+gender = "female"
+locale = "en-US"
+description = "Clear American female voice"
+
+# American Male voices
+[voicemode.am_adam]
+name = "Adam"
+gender = "male"
+locale = "en-US"
+description = "Deep, authoritative American male voice"
+
+[voicemode.am_echo]
+name = "Echo"
+gender = "male"
+locale = "en-US"
+description = "Warm American male voice"
+
+[voicemode.am_onyx]
+name = "Onyx"
+gender = "male"
+locale = "en-US"
+description = "Professional American male voice"
+
+[voicemode.am_eric]
+name = "Eric"
+gender = "male"
+locale = "en-US"
+description = "Clear American male voice"
+
+# British voices
+[voicemode.bf_emma]
+name = "Emma"
+gender = "female"
+locale = "en-GB"
+description = "British female voice"
+
+[voicemode.bm_george]
+name = "George"
+gender = "male"
+locale = "en-GB"
+description = "British male voice"
+
+# Australian voices
+[voicemode.af_isla]
+name = "Isla"
+gender = "female"
+locale = "en-AU"
+description = "Australian female voice"
+
+# ============================================================================
+# macOS 'say' Voices
+# ============================================================================
+# Built-in voices available on macOS. List all with: say -v '?'
+# Quality voices (enhanced) are marked with [enhanced].
+
+[say.Alex]
+name = "Alex"
+gender = "male"
+locale = "en-US"
+description = "Default macOS male voice, high quality"
+
+[say.Samantha]
+name = "Samantha"
+gender = "female"
+locale = "en-US"
+description = "Default macOS female voice, high quality"
+
+[say.Victoria]
+name = "Victoria"
+gender = "female"
+locale = "en-US"
+description = "Energetic American female voice"
+
+[say.Vicki]
+name = "Vicki"
+gender = "female"
+locale = "en-US"
+description = "Soft American female voice"
+
+[say.Fred]
+name = "Fred"
+gender = "male"
+locale = "en-US"
+description = "Robot-like American male voice"
+
+[say.Daniel]
+name = "Daniel"
+gender = "male"
+locale = "en-GB"
+description = "British male voice"
+
+[say.Kate]
+name = "Kate"
+gender = "female"
+locale = "en-GB"
+description = "British female voice"
+
+[say.Karen]
+name = "Karen"
+gender = "female"
+locale = "en-AU"
+description = "Australian female voice"
+
+# ============================================================================
+# Kokoro TTS Voices
+# ============================================================================
+# Kokoro is a fast, local TTS model. Install with: pip install kokoro
+# https://github.com/hexgrad/kokoro
+
+[kokoro.af_heart]
+name = "Heart"
+gender = "female"
+locale = "en-US"
+description = "Warm American female voice (Kokoro default)"
+
+[kokoro.af_bella]
+name = "Bella"
+gender = "female"
+locale = "en-US"
+description = "Soft American female voice"
+
+[kokoro.af_sky]
+name = "Sky"
+gender = "female"
+locale = "en-US"
+description = "Clear American female voice"
+
+[kokoro.am_onyx]
+name = "Onyx"
+gender = "male"
+locale = "en-US"
+description = "Deep American male voice"
+
+[kokoro.am_echo]
+name = "Echo"
+gender = "male"
+locale = "en-US"
+description = "Warm American male voice"
+
+[kokoro.bf_emma]
+name = "Emma"
+gender = "female"
+locale = "en-GB"
+description = "British female voice"
+
+[kokoro.bm_george]
+name = "George"
+gender = "male"
+locale = "en-GB"
+description = "British male voice"
+
+# ============================================================================
+# OpenAI TTS Voices
+# ============================================================================
+# OpenAI's TTS API. Requires OPENAI_API_KEY environment variable.
+# https://platform.openai.com/docs/guides/text-to-speech
+
+[openai.alloy]
+name = "Alloy"
+gender = "neutral"
+locale = "en-US"
+description = "Versatile, neutral voice (OpenAI default)"
+
+[openai.echo]
+name = "Echo"
+gender = "male"
+locale = "en-US"
+description = "Warm male voice"
+
+[openai.fable]
+name = "Fable"
+gender = "neutral"
+locale = "en-GB"
+description = "British accent, great for storytelling"
+
+[openai.onyx]
+name = "Onyx"
+gender = "male"
+locale = "en-US"
+description = "Deep, authoritative male voice"
+
+[openai.nova]
+name = "Nova"
+gender = "female"
+locale = "en-US"
+description = "Warm, expressive female voice"
+
+[openai.shimmer]
+name = "Shimmer"
+gender = "female"
+locale = "en-US"
+description = "Bright, optimistic female voice"
+
+# ============================================================================
+# Helper Functions (for bridge/config.py)
+# ============================================================================
+# The following functions can be used by the bridge to resolve voices:
+#
+# def resolve_voice(voice_name: str, backend: str) -> str:
+#     """Resolve a voice preset or alias to actual voice ID."""
+#     # Check if it's a preset
+#     if voice_name in presets:
+#         return presets[voice_name].get(backend, presets[voice_name]["voicemode"])
+#     # Otherwise, return as-is (assume it's a direct voice ID)
+#     return voice_name
+#
+# def list_available_voices(backend: str) -> list[str]:
+#     """List available voices for a backend."""
+#     return [k for k, v in globals()[backend].items()]
