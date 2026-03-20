@@ -404,6 +404,65 @@ KIMI_VOICE_DEBUG=1 kimi-voice "test" 2>&1 | tee kimi-voice-debug.log
 
 ### macOS
 
+**Issue: "Error querying device -1" / No audio devices on macOS 26 Tahoe**
+
+On macOS 26 (Tahoe), PortAudio and CoreAudio may report zero audio devices when
+processes are spawned from certain terminal applications (e.g. Electron-based
+terminals like Superset). The OS-level `AudioObjectGetPropertyData` call returns
+an empty device list, even though System Settings > Sound shows devices normally.
+
+**Symptoms:**
+```
+PCM streaming failed: Error querying device -1
+Sounddevice playback failed: Error querying device -1
+afplay: AudioQueueStart failed (-66680)
+```
+
+**Diagnosis:**
+```bash
+# Check if the system sees audio devices
+system_profiler SPAudioDataType
+
+# Check if afplay works
+afplay /System/Library/Sounds/Ping.aiff
+
+# Check PortAudio device enumeration
+python3 -c "import sounddevice as sd; print(sd.query_devices())"
+```
+
+If `system_profiler` shows `Devices:` with nothing listed, or `afplay` fails
+with `-66680`, the issue is at the OS level.
+
+**Workarounds:**
+
+1. **Run from Terminal.app or iTerm2** — Apple's own Terminal.app has full
+   CoreAudio access. Electron-based terminals may lack the required entitlements.
+
+2. **Restart CoreAudio daemon** (from a working terminal):
+   ```bash
+   sudo killall coreaudiod
+   ```
+   The daemon auto-restarts with fresh device enumeration.
+
+3. **Guard hooks against missing audio** — add a device check before calling
+   `voicemode` or `afplay` in your hooks:
+   ```bash
+   # Skip if no audio output device is available
+   if ! system_profiler SPAudioDataType 2>/dev/null | grep -q "Default Output Device: Yes"; then
+       exit 0
+   fi
+
+   voicemode converse -m "$MESSAGE" --no-wait 2>/dev/null
+   ```
+
+4. **Reboot** — if `killall coreaudiod` doesn't resolve it, a full reboot
+   usually restores audio device enumeration.
+
+**Root cause:** macOS 26 introduced stricter CoreAudio access controls. Processes
+spawned from terminal apps without appropriate audio entitlements cannot enumerate
+audio devices via PortAudio's CoreAudio host API. This affects all PortAudio
+versions (including latest git HEAD) and is not a voicemode or sounddevice bug.
+
 **Issue: `say` command not found**
 - `say` is built into macOS and should always be available
 - If missing, your macOS installation may be incomplete
